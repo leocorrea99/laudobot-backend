@@ -68,18 +68,18 @@ async def chat(request: MessageRequest):
                 break
             time.sleep(3)  # Espera um pouco antes de verificar novamente
 
-        # Agora buscamos as mensagens **APÓS** a resposta ser gerada
+        # 🔥 **BUSCAR A ÚLTIMA RESPOSTA DO ASSISTENTE APÓS A EXECUÇÃO!** 🔥
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
 
-        # Buscar a última resposta gerada pelo assistente
+        # Percorre a thread da resposta mais recente para trás e verifica se houve uma nova resposta
         response_text = None
-        for msg in reversed(messages.data):  # Percorre da última para a primeira
+        for msg in reversed(messages.data):  
             if msg.role == "assistant" and msg.content:
                 response_text = msg.content[0].text.value
                 break
 
         if not response_text:
-            response_text = "Desculpe, não consegui processar a resposta."
+            response_text = "Desculpe, não consegui processar a resposta corretamente."
 
         print(f"Resposta do assistente: {response_text}")
 
