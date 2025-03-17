@@ -27,17 +27,20 @@ openai.api_key = OPENAI_API_KEY
 
 class MessageRequest(BaseModel):
     message: str
+    thread_id: str = None  # Permitir conversas contínuas
 
 @app.post("/chat")
 async def chat(request: MessageRequest):
     try:
         print(f"Recebendo mensagem: {request.message}")  # Log da mensagem recebida
 
-        # Criar uma nova thread para a conversa
-        thread = openai.beta.threads.create()
-        thread_id = thread.id  
-
-        print(f"Thread criada: {thread_id}")  # Log da criação da thread
+        # Se não houver uma thread, criamos uma nova
+        if not request.thread_id:
+            thread = openai.beta.threads.create()
+            thread_id = thread.id
+            print(f"Nova thread criada: {thread_id}")  # Log da criação da thread
+        else:
+            thread_id = request.thread_id
 
         # Enviar a mensagem do usuário para a thread
         openai.beta.threads.messages.create(
@@ -70,7 +73,7 @@ async def chat(request: MessageRequest):
 
         print(f"Resposta do assistente: {response_text}")  # Log da resposta do assistente
 
-        return {"response": response_text}
+        return {"response": response_text, "thread_id": thread_id}  # Retorna o thread_id para manter a conversa
 
     except Exception as e:
         print(f"Erro no backend: {str(e)}")  # Log do erro nos logs da Render
@@ -79,4 +82,3 @@ async def chat(request: MessageRequest):
 @app.get("/")
 def read_root():
     return {"message": "API do Laudobot funcionando!"}
-
