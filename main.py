@@ -25,10 +25,9 @@ if not OPENAI_API_KEY or not ASSISTANT_ID:
 
 openai.api_key = OPENAI_API_KEY
 
-# Estrutura esperada para mensagens recebidas
 class MessageRequest(BaseModel):
     message: str
-    thread_id: str | None = None  # Thread opcional para manter contexto
+    thread_id: str | None = None  # Permitir conversas contínuas
 
 @app.post("/chat")
 async def chat(request: MessageRequest):
@@ -60,20 +59,19 @@ async def chat(request: MessageRequest):
 
         print(f"Execução iniciada: {run.id}")
 
-        # Esperar o processamento da resposta do assistente
+        # 🔥 **AGORA ESPERAMOS A OPENAI GERAR A RESPOSTA!** 🔥
         while True:
-            run_status = openai.beta.threads.runs.retrieve(
-                thread_id=thread_id, run_id=run.id
-            )
+            run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            print(f"Status da execução: {run_status.status}")
             if run_status.status == "completed":
+                print("Resposta gerada! Continuando para a busca da resposta...")
                 break
-            print("Aguardando resposta do assistente...")
-            time.sleep(2)  # Pequena pausa para evitar excesso de requisições
+            time.sleep(3)  # Espera um pouco antes de verificar novamente
 
-        # Obter todas as mensagens da thread
+        # Agora buscamos as mensagens **APÓS** a resposta ser gerada
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
 
-        # Buscar a última resposta do assistente
+        # Buscar a última resposta gerada pelo assistente
         response_text = None
         for msg in reversed(messages.data):  # Percorre da última para a primeira
             if msg.role == "assistant" and msg.content:
@@ -94,3 +92,4 @@ async def chat(request: MessageRequest):
 @app.get("/")
 def read_root():
     return {"message": "API do Laudobot funcionando!"}
+
