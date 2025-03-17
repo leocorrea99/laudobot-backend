@@ -25,10 +25,9 @@ if not OPENAI_API_KEY or not ASSISTANT_ID:
 
 openai.api_key = OPENAI_API_KEY
 
-# Definir um modelo de entrada para garantir que os dados sejam recebidos corretamente
 class MessageRequest(BaseModel):
     message: str = Field(..., example="Olá, tudo bem?")
-    thread_id: str | None = Field(None, example="thread_xxxxx")  # Agora é opcional
+    thread_id: str | None = Field(None, example="thread_xxxxx")
 
 @app.post("/chat")
 async def chat(request: MessageRequest):
@@ -52,10 +51,11 @@ async def chat(request: MessageRequest):
 
         print("Mensagem enviada ao assistente")  # Log da mensagem enviada
 
-        # Criar a execução do assistente
+        # Criar a execução do assistente **usando o Assistant ID correto**
         run = openai.beta.threads.runs.create(
             thread_id=thread_id,
-            assistant_id=ASSISTANT_ID
+            assistant_id=ASSISTANT_ID,
+            instructions="Siga as diretrizes do assistente configurado no Playground."
         )
 
         print(f"Execução iniciada: {run.id}")  # Log da execução do assistente
@@ -70,9 +70,14 @@ async def chat(request: MessageRequest):
 
         # Obter a resposta gerada pelo assistente
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
-        response_text = messages.data[-1].content[0].text.value  # Pegando a última resposta
-
-        print(f"Resposta do assistente: {response_text}")  # Log da resposta do assistente
+        
+        # Verificar se há uma resposta válida
+        if messages.data:
+            response_text = messages.data[-1].content[0].text.value  # Pegando a última resposta gerada
+            print(f"Resposta do assistente: {response_text}")  # Log da resposta
+        else:
+            response_text = "Desculpe, não consegui processar a resposta."
+            print("Erro: O assistente não gerou uma resposta válida.")
 
         return {"response": response_text, "thread_id": thread_id}  # Retorna o thread_id para manter a conversa
 
@@ -83,4 +88,3 @@ async def chat(request: MessageRequest):
 @app.get("/")
 def read_root():
     return {"message": "API do Laudobot funcionando!"}
-
