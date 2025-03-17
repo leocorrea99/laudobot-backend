@@ -51,6 +51,9 @@ async def chat(request: MessageRequest):
 
         print(f"Mensagem enviada à thread {thread_id}")
 
+        # 🔥 **AGUARDAR PARA GARANTIR QUE A MENSAGEM FOI REGISTRADA** 🔥
+        time.sleep(3)
+
         # Criar uma execução para processar a resposta
         run = openai.beta.threads.runs.create(
             thread_id=thread_id,
@@ -59,21 +62,21 @@ async def chat(request: MessageRequest):
 
         print(f"Execução iniciada: {run.id}")
 
-        # 🔥 **AGORA ESPERAMOS A OPENAI GERAR A RESPOSTA!** 🔥
+        # 🔥 **AGORA ESPERAMOS A OPENAI PROCESSAR A RESPOSTA** 🔥
         while True:
             run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             print(f"Status da execução: {run_status.status}")
             if run_status.status == "completed":
                 print("Resposta gerada! Continuando para a busca da resposta...")
                 break
-            time.sleep(3)  # Espera um pouco antes de verificar novamente
+            time.sleep(3)  # Espera antes de verificar novamente
 
-        # 🔥 **BUSCAR A ÚLTIMA RESPOSTA DO ASSISTENTE APÓS A EXECUÇÃO!** 🔥
+        # 🔥 **BUSCAR SOMENTE A ÚLTIMA MENSAGEM GERADA PELO ASSISTENTE** 🔥
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
 
-        # Percorre a thread da resposta mais recente para trás e verifica se houve uma nova resposta
+        # Encontrar a última mensagem do assistente
         response_text = None
-        for msg in reversed(messages.data):  
+        for msg in reversed(messages.data):
             if msg.role == "assistant" and msg.content:
                 response_text = msg.content[0].text.value
                 break
