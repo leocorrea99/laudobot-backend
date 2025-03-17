@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 import openai
 import os
 import time
@@ -25,9 +25,10 @@ if not OPENAI_API_KEY or not ASSISTANT_ID:
 
 openai.api_key = OPENAI_API_KEY
 
+# Definir um modelo de entrada para garantir que os dados sejam recebidos corretamente
 class MessageRequest(BaseModel):
-    message: str
-    thread_id: str = None  # Permitir conversas contínuas
+    message: str = Field(..., example="Olá, tudo bem?")
+    thread_id: str | None = Field(None, example="thread_xxxxx")  # Agora é opcional
 
 @app.post("/chat")
 async def chat(request: MessageRequest):
@@ -82,3 +83,4 @@ async def chat(request: MessageRequest):
 @app.get("/")
 def read_root():
     return {"message": "API do Laudobot funcionando!"}
+
