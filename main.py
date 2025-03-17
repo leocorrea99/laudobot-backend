@@ -1,5 +1,5 @@
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import openai
 import os
 import time
@@ -25,64 +25,70 @@ if not OPENAI_API_KEY or not ASSISTANT_ID:
 
 openai.api_key = OPENAI_API_KEY
 
+# Estrutura esperada para mensagens recebidas
 class MessageRequest(BaseModel):
-    message: str = Field(..., example="Olá, tudo bem?")
-    thread_id: str | None = Field(None, example="thread_xxxxx")
+    message: str
+    thread_id: str | None = None  # Thread opcional para manter contexto
 
 @app.post("/chat")
 async def chat(request: MessageRequest):
     try:
-        print(f"Recebendo mensagem: {request.message}")  # Log da mensagem recebida
+        print(f"Recebendo mensagem: {request.message}")
 
-        # Se não houver uma thread, criamos uma nova
+        # Criar uma nova thread se não houver uma já existente
         if not request.thread_id:
             thread = openai.beta.threads.create()
             thread_id = thread.id
-            print(f"Nova thread criada: {thread_id}")  # Log da criação da thread
+            print(f"Nova thread criada: {thread_id}")
         else:
             thread_id = request.thread_id
 
-        # Enviar a mensagem do usuário para a thread
+        # Adicionar mensagem à thread existente
         openai.beta.threads.messages.create(
             thread_id=thread_id,
             role="user",
             content=request.message
         )
 
-        print("Mensagem enviada ao assistente")  # Log da mensagem enviada
+        print(f"Mensagem enviada à thread {thread_id}")
 
-        # Criar a execução do assistente **usando o Assistant ID correto**
+        # Criar uma execução para processar a resposta
         run = openai.beta.threads.runs.create(
             thread_id=thread_id,
-            assistant_id=ASSISTANT_ID,
-            instructions="Siga as diretrizes do assistente configurado no Playground."
+            assistant_id=ASSISTANT_ID
         )
 
-        print(f"Execução iniciada: {run.id}")  # Log da execução do assistente
+        print(f"Execução iniciada: {run.id}")
 
-        # Aguardar o processamento da resposta
+        # Esperar o processamento da resposta do assistente
         while True:
-            run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            run_status = openai.beta.threads.runs.retrieve(
+                thread_id=thread_id, run_id=run.id
+            )
             if run_status.status == "completed":
                 break
             print("Aguardando resposta do assistente...")
             time.sleep(2)  # Pequena pausa para evitar excesso de requisições
 
-        # Obter a resposta gerada pelo assistente
+        # Obter todas as mensagens da thread
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
-        
-        # Verificar se há uma resposta válida
-        if messages.data:
-            response_text = messages.data[-1].content[0].text.value  # Pegando a última resposta gerada
-            print(f"Resposta do assistente: {response_text}")  # Log da resposta
-        else:
-            response_text = "Desculpe, não consegui processar a resposta."
-            print("Erro: O assistente não gerou uma resposta válida.")
 
-        return {"response": response_text, "thread_id": thread_id}  # Retorna o thread_id para manter a conversa
+        # Pegar apenas a última resposta gerada pelo assistente
+        response_text = None
+        for msg in reversed(messages.data):  # Verifica da última para a primeira
+            if msg.role == "assistant":
+                response_text = msg.content[0].text.value
+                break
+
+        if not response_text:
+            response_text = "Desculpe, não consegui processar a resposta."
+
+        print(f"Resposta do assistente: {response_text}")
+
+        return {"response": response_text, "thread_id": thread_id}
 
     except Exception as e:
-        print(f"Erro no backend: {str(e)}")  # Log do erro nos logs da Render
+        print(f"Erro no backend: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/")
