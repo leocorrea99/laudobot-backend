@@ -36,14 +36,14 @@ async def chat(request: MessageRequest):
 
         # Criar uma nova thread se não houver uma já existente
         if not request.thread_id:
-            thread = openai.beta.threads.create()
+            thread = openai.threads.create()
             thread_id = thread.id
             print(f"Nova thread criada: {thread_id}")
         else:
             thread_id = request.thread_id
 
-        # Adicionar mensagem à thread existente
-        openai.beta.threads.messages.create(
+        # Adicionar a mensagem do usuário à thread
+        openai.threads.messages.create(
             thread_id=thread_id,
             role="user",
             content=request.message
@@ -51,30 +51,26 @@ async def chat(request: MessageRequest):
 
         print(f"Mensagem enviada à thread {thread_id}")
 
-        # 🔥 **AGUARDAR PARA GARANTIR QUE A MENSAGEM FOI REGISTRADA** 🔥
-        time.sleep(3)
-
-        # Criar uma execução para processar a resposta
-        run = openai.beta.threads.runs.create(
+        # Criar uma execução do assistente na thread
+        run = openai.threads.runs.create(
             thread_id=thread_id,
             assistant_id=ASSISTANT_ID
         )
 
         print(f"Execução iniciada: {run.id}")
 
-        # 🔥 **AGORA ESPERAMOS A OPENAI PROCESSAR A RESPOSTA** 🔥
+        # 🔥 **ESPERAR O PROCESSAMENTO DA RESPOSTA**
         while True:
-            run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            run_status = openai.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             print(f"Status da execução: {run_status.status}")
             if run_status.status == "completed":
-                print("Resposta gerada! Continuando para a busca da resposta...")
                 break
-            time.sleep(3)  # Espera antes de verificar novamente
+            time.sleep(3)
 
-        # 🔥 **BUSCAR SOMENTE A ÚLTIMA MENSAGEM GERADA PELO ASSISTENTE** 🔥
-        messages = openai.beta.threads.messages.list(thread_id=thread_id)
+        # 🔥 **BUSCAR A ÚLTIMA RESPOSTA DO ASSISTENTE APÓS O PROCESSAMENTO**
+        messages = openai.threads.messages.list(thread_id=thread_id)
 
-        # Encontrar a última mensagem do assistente
+        # Encontrar a última resposta do assistente
         response_text = None
         for msg in reversed(messages.data):
             if msg.role == "assistant" and msg.content:
@@ -95,4 +91,3 @@ async def chat(request: MessageRequest):
 @app.get("/")
 def read_root():
     return {"message": "API do Laudobot funcionando!"}
-
