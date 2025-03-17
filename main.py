@@ -73,10 +73,10 @@ async def chat(request: MessageRequest):
         # Obter todas as mensagens da thread
         messages = openai.beta.threads.messages.list(thread_id=thread_id)
 
-        # Pegar apenas a última resposta gerada pelo assistente
+        # Buscar a última resposta do assistente
         response_text = None
-        for msg in reversed(messages.data):  # Verifica da última para a primeira
-            if msg.role == "assistant":
+        for msg in reversed(messages.data):  # Percorre da última para a primeira
+            if msg.role == "assistant" and msg.content:
                 response_text = msg.content[0].text.value
                 break
 
