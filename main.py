@@ -36,14 +36,14 @@ async def chat(request: MessageRequest):
 
         # Criar uma nova thread se não houver uma já existente
         if not request.thread_id:
-            thread = openai.threads.create()
+            thread = openai.beta.threads.create()
             thread_id = thread.id
             print(f"Nova thread criada: {thread_id}")
         else:
             thread_id = request.thread_id
 
         # Adicionar a mensagem do usuário à thread
-        openai.threads.messages.create(
+        openai.beta.threads.messages.create(
             thread_id=thread_id,
             role="user",
             content=request.message
@@ -52,7 +52,7 @@ async def chat(request: MessageRequest):
         print(f"Mensagem enviada à thread {thread_id}")
 
         # Criar uma execução do assistente na thread
-        run = openai.threads.runs.create(
+        run = openai.beta.threads.runs.create(
             thread_id=thread_id,
             assistant_id=ASSISTANT_ID
         )
@@ -61,14 +61,14 @@ async def chat(request: MessageRequest):
 
         # 🔥 **ESPERAR O PROCESSAMENTO DA RESPOSTA**
         while True:
-            run_status = openai.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
+            run_status = openai.beta.threads.runs.retrieve(thread_id=thread_id, run_id=run.id)
             print(f"Status da execução: {run_status.status}")
             if run_status.status == "completed":
                 break
             time.sleep(3)
 
         # 🔥 **BUSCAR A ÚLTIMA RESPOSTA DO ASSISTENTE APÓS O PROCESSAMENTO**
-        messages = openai.threads.messages.list(thread_id=thread_id)
+        messages = openai.beta.threads.messages.list(thread_id=thread_id)
 
         # Encontrar a última resposta do assistente
         response_text = None
